@@ -1,8 +1,159 @@
-console.log("Automation started");
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import { google } from "googleapis";
 
-console.log("Step 1: Generate script");
-console.log("Step 2: Generate voice");
-console.log("Step 3: Render video");
-console.log("Step 4: Upload to YouTube");
+import { generateScript } from "../src/openai.js";
+import { generateVoice } from "../src/voice.js";
+import { generateVideo } from "../src/video.js";
+import { uploadToYoutube } from "../src/youtube.js";
 
-console.log("Automation completed");
+const log = (message) => console.log(`[auto] ${message}`);
+
+const REQUIRED_ENV = [
+  "OPENAI_API_KEY",
+  "ELEVENLABS_API_KEY",
+  "YOUTUBE_CLIENT_ID",
+  "YOUTUBE_CLIENT_SECRET",
+  "YOUTUBE_REFRESH_TOKEN",
+];
+
+function getEnv(name, fallback = "") {
+  return process.env[name] || fallback;
+}
+
+function requireEnv() {
+  const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
+  if (missing.length) {
+    throw new Error(`Missing required secrets: ${missing.join(", ")}`);
+  }
+}
+
+async function listMediaFiles(dir, exts) {
+  try {
+    const files = await fs.readdir(dir);
+    return files.filter((file) => exts.some((ext) => file.toLowerCase().endsWith(ext)));
+  } catch {
+    return [];
+  }
+}
+
+async function getAccessToken() {
+  const clientId = getEnv("YOUTUBE_CLIENT_ID");
+  const clientSecret = getEnv("YOUTUBE_CLIENT_SECRET");
+  const redirectUri = getEnv("YOUTUBE_REDIRECT_URI", "http://localhost:3000/api/youtube/callback");
+  const refreshToken = getEnv("YOUTUBE_REFRESH_TOKEN");
+
+  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  const tokenResponse = await oauth2Client.getAccessToken();
+  const accessToken = tokenResponse?.token || tokenResponse;
+  if (!accessToken) {
+    throw new Error("Failed to refresh YouTube access token.");
+  }
+  return accessToken;
+}
+
+async function cleanupTemp(tempDir) {
+  try {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  } catch (err) {
+    console.error("[auto] Cleanup failed:", err.message);
+  }
+}
+
+async function run() {
+  requireEnv();
+
+  const tempDir = path.join(os.tmpdir(), "shorts-factory-daily");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const baseDir = path.join(process.cwd(), "base-videos");
+  const musicDir = path.join(process.cwd(), "music");
+
+  const baseVideos = await listMediaFiles(baseDir, [".mp4", ".mov", ".mkv", ".webm"]);
+  if (!baseVideos.length) {
+    throw new Error("No base videos found. Add files to /base-videos in the repo.");
+  }
+
+  const musicTracks = await listMediaFiles(musicDir, [".mp3", ".wav", ".m4a"]);
+  const baseVideo = baseVideos[Math.floor(Math.random() * baseVideos.length)];
+  const musicFile = musicTracks.length ? musicTracks[Math.floor(Math.random() * musicTracks.length)] : "";
+
+  const prompt = getEnv(
+    "PROMPT",
+    "Write a 30 second motivational speech for YouTube Shorts. Hook the viewer in the first sentence. Use simple powerful language."
+  );
+
+  const openaiModel = getEnv("OPENAI_MODEL", "gpt-4o-mini");
+  const openaiBaseUrl = getEnv("OPENAI_BASE_URL", "");
+  const voice = getEnv("ELEVENLABS_VOICE", "alloy");
+  const maxDuration = Number(getEnv("MAX_DURATION", "0")) || 0;
+
+  const title = getEnv("VIDEO_TITLE", "Daily Motivation");
+  const description = getEnv(
+    "VIDEO_DESCRIPTION",
+    "Daily motivational shorts.\n\nSubscribe for more success mindset content.\n\n#motivation #success #discipline"
+  );
+  const tags = getEnv("VIDEO_TAGS", "motivation,success,discipline")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  let voiceFile = "";
+  let videoPath = "";
+
+  try {
+    log("Generating script");
+    const script = await generateScript({
+      prompt,
+      apiKey: getEnv("OPENAI_API_KEY"),
+      baseUrl: openaiBaseUrl,
+      model: openaiModel,
+    });
+
+    log("Generating voice");
+    const voiceResult = await generateVoice({
+      text: script,
+      voice,
+      elevenLabsApiKey: getEnv("ELEVENLABS_API_KEY"),
+      outDir: tempDir,
+    });
+    voiceFile = voiceResult.file;
+
+    log("Creating video");
+    videoPath = await generateVideo({
+      baseVideoPath: path.join(baseDir, baseVideo),
+      voicePath: path.join(tempDir, voiceFile),
+      script,
+      outDir: tempDir,
+      title,
+      musicPath: musicFile ? path.join(musicDir, musicFile) : null,
+      maxDuration,
+    });
+  } catch (err) {
+    log(`Video generation failed: ${err.message}`);
+    throw err;
+  }
+
+  log("Uploading to YouTube");
+  const accessToken = await getAccessToken();
+  const uploadResult = await uploadToYoutube({
+    accessToken,
+    refreshToken: getEnv("YOUTUBE_REFRESH_TOKEN"),
+    videoPath,
+    title,
+    description,
+    tags,
+  });
+
+  log(`Upload complete: ${uploadResult?.id || "unknown id"}`);
+
+  await cleanupTemp(tempDir);
+}
+
+run().catch(async (err) => {
+  console.error("[auto] Fatal error:", err);
+  await cleanupTemp(path.join(os.tmpdir(), "shorts-factory-daily"));
+  process.exit(1);
+});

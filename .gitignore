@@ -1,0 +1,13 @@
+node_modules/
+mobile/node_modules/
+mobile/_git/
+data/
+uploads/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+dist/
+build/

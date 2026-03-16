@@ -1,25 +1,40 @@
 name: Daily Upload
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: "0 10 * * *"
+  workflow_dispatch:
 
 jobs:
-  run-bot:
+  upload:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
 
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
+      - name: Install dependencies
+        run: npm install
+
       - name: Run automation
         run: node scripts/autoUpload.js
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ELEVENLABS_VOICE: ${{ secrets.ELEVENLABS_VOICE }}
+          VIDEO_TITLE: ${{ secrets.VIDEO_TITLE }}
+          VIDEO_DESCRIPTION: ${{ secrets.VIDEO_DESCRIPTION }}
+          VIDEO_TAGS: ${{ secrets.VIDEO_TAGS }}
+          MAX_DURATION: ${{ secrets.MAX_DURATION }}

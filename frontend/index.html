@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shorts Factory Daily</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Shorts Factory Daily</h1>
+      <p class="subtitle">Generate and upload motivational YouTube Shorts from your phone</p>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="home">Home</button>
+      <button class="tab" data-tab="create">Create</button>
+      <button class="tab" data-tab="library">Library</button>
+      <button class="tab" data-tab="automation">Automation</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <main class="panel" id="home">
+      <h2>Welcome</h2>
+      <p>Upload a few base videos, generate scripts, then create and schedule Shorts daily.</p>
+      <div class="card" id="home-status">Add your API keys in Settings to get started.</div>
+      <div class="card">
+        <h3>Quick Start</h3>
+        <p>1. Upload 1-3 vertical base videos in Library.</p>
+        <p>2. Generate a script and voice in Create.</p>
+        <p>3. Generate a video and upload it to YouTube.</p>
+      </div>
+    </main>
+
+    <main class="panel hidden" id="create">
+      <h2>Create a Short</h2>
+      <div class="card">
+        <label for="base-video">Base video</label>
+        <select id="base-video"></select>
+      </div>
+
+      <div class="card">
+        <label for="script-prompt">Script prompt</label>
+        <textarea id="script-prompt" rows="3">Write a 30 second motivational speech for YouTube Shorts. Hook the viewer in the first sentence. Use simple powerful language.</textarea>
+        <button id="generate-script">Generate Script</button>
+        <textarea id="script-output" rows="5" readonly placeholder="Generated script will appear here"></textarea>
+      </div>
+
+      <div class="card">
+        <label for="voice-voice">Voice</label>
+        <input id="voice-voice" placeholder="ElevenLabs voice (e.g. alloy)" />
+        <button id="generate-voice">Generate Voice</button>
+        <div id="voice-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <label for="video-title">Title</label>
+        <input id="video-title" placeholder="Shorts title" />
+        <label for="max-duration">Max duration (seconds, optional)</label>
+        <input id="max-duration" type="number" min="0" placeholder="0 = auto" />
+        <label for="music-select">Background music</label>
+        <select id="music-select"></select>
+        <button id="generate-video">Generate Video</button>
+        <button id="upload-youtube" class="secondary" type="button">Upload to YouTube</button>
+        <div id="video-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>Preview</h3>
+        <video id="preview" controls playsinline></video>
+        <a id="download-link" class="button hidden" download>Download Video</a>
+      </div>
+    </main>
+
+    <main class="panel hidden" id="library">
+      <h2>Base Videos</h2>
+      <div class="card">
+        <label for="upload-base">Upload a base video (max 3)</label>
+        <input id="upload-base" type="file" accept="video/*" />
+        <div id="upload-status" class="status"></div>
+      </div>
+      <div class="card">
+        <h3>Your base videos</h3>
+        <ul id="base-list"></ul>
+      </div>
+
+      <div class="card">
+        <h3>History</h3>
+        <ul id="history"></ul>
+      </div>
+    </main>
+
+    <main class="panel hidden" id="automation">
+      <h2>Automation</h2>
+      <div class="card">
+        <label for="videos-per-day">Videos per day</label>
+        <input id="videos-per-day" type="number" min="1" value="1" />
+      </div>
+      <div class="card">
+        <label for="upload-time">Upload time (HH:mm local)</label>
+        <input id="upload-time" type="time" value="09:00" />
+      </div>
+      <div class="card">
+        <label class="checkbox">
+          <input id="enable-automation" type="checkbox" />
+          Enable daily automation while app is open
+        </label>
+        <label class="checkbox">
+          <input id="automation-upload" type="checkbox" />
+          Auto upload to YouTube after generation
+        </label>
+      </div>
+      <div class="card">
+        <button id="run-automation">Run automation now</button>
+        <div id="automation-status" class="status"></div>
+      </div>
+      <p class="note">Automation runs only while this app is open. Replit sleeps when idle.</p>
+    </main>
+
+    <main class="panel hidden" id="settings">
+      <h2>Settings</h2>
+      <div class="card">
+        <h3>API Vault</h3>
+        <label for="vault-password">Vault password</label>
+        <input id="vault-password" type="password" autocomplete="new-password" />
+        <button id="unlock-vault" type="button">Unlock Vault</button>
+        <div id="vault-status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>AI Settings</h3>
+        <label for="openai-key">OpenAI API Key</label>
+        <input id="openai-key" type="password" autocomplete="new-password" />
+        <label for="openai-base">OpenAI Base URL (optional)</label>
+        <input id="openai-base" placeholder="https://api.openai.com/v1" />
+        <label for="openai-model">OpenAI Model</label>
+        <input id="openai-model" placeholder="gpt-4o-mini" />
+      </div>
+      <div class="card">
+        <h3>Voice Settings</h3>
+        <label for="elevenlabs-key">ElevenLabs API Key</label>
+        <input id="elevenlabs-key" type="password" autocomplete="new-password" />
+        <label for="default-voice">Default Voice</label>
+        <input id="default-voice" placeholder="alloy" />
+      </div>
+      <div class="card">
+        <h3>Video Settings</h3>
+        <label for="default-prompt">Default Script Prompt</label>
+        <textarea id="default-prompt" rows="3">Write a 30 second motivational speech for YouTube Shorts. Hook the viewer in the first sentence. Use simple powerful language.</textarea>
+        <label for="default-title">Default Title</label>
+        <input id="default-title" placeholder="Daily Motivation" />
+        <label for="default-description">Default Description</label>
+        <textarea id="default-description" rows="3">Daily motivational shorts.
+
+Subscribe for more success mindset content.
+
+#motivation #success #discipline</textarea>
+        <label for="default-tags">Default Tags (comma separated)</label>
+        <input id="default-tags" placeholder="motivation, success, discipline" />
+        <label for="default-max-duration">Default max duration (seconds)</label>
+        <input id="default-max-duration" type="number" min="0" placeholder="0 = auto" />
+        <label for="subtitle-size">Subtitle size</label>
+        <input id="subtitle-size" type="number" min="32" max="120" placeholder="64" />
+        <label for="subtitle-outline">Subtitle outline</label>
+        <input id="subtitle-outline" type="number" min="1" max="12" placeholder="4" />
+        <label for="music-upload">Upload background music</label>
+        <input id="music-upload" type="file" accept="audio/*" />
+        <label for="default-music">Default music</label>
+        <select id="default-music"></select>
+      </div>
+      <div class="card">
+        <h3>YouTube</h3>
+        <button id="connect-youtube" type="button">Connect YouTube</button>
+        <div id="youtube-status" class="status"></div>
+      </div>
+      <div class="card">
+        <button id="save-settings">Save Settings</button>
+        <div id="save-status" class="status"></div>
+      </div>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
